@@ -10,7 +10,8 @@
 #include <chrono>
 #include <random>
 #include <iostream>
-
+#include <fstream>
+#include <QWidget>
 void Maze::PrepareSeed(int row) {
     if (row == 0)
         return;
@@ -39,7 +40,7 @@ void Maze::AddSideBorder(int row) {
         for (int i = 0; i < cols_ - 1; ++i) {
             if (seed_[i] != seed_[i + 1]) {
                 side_border_[row][i] = 0;
-                seed_[i + 1] = seed_[i];
+                Merge(i, seed_[i]);
             }
         }
     }
@@ -52,7 +53,7 @@ void Maze::AddSideBorder(int row) {
 
 void Maze::Merge(int i, int val) {
     int mut_val = seed_[i + 1];
-    for (int j = i; j < cols_; ++j) {
+    for (int j = 0; j < cols_; ++j) {
         if(seed_[j] == mut_val) {
             seed_[j] = val;
         }
@@ -82,42 +83,7 @@ void Maze::AddBottomBorder(int row) {
             bottom_border_[row][cols_ - 1] = CoinFlip();
     }
 }
-void Maze::Print() {
-    std::cout << '\n';
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            std::cout <<side_border_[i][j];
-            j == cols_ - 1 ? std::cout << '\n' : std::cout << ' ';
-        }
-    }
-    std::cout << '\n';
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            std::cout <<bottom_border_[i][j];
-            j == cols_ - 1 ? std::cout << '\n' : std::cout << ' ';
-        }
-    }
-    std::cout << '\n';
-    for (int j = 0; j < cols_; ++j)
-        std::cout << "__";
-    std::cout << '\n';
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            if (bottom_border_[i][j] && side_border_[i][j]) {
-                std::cout<< "_⏌";
-            } else if (bottom_border_[i][j] && !side_border_[i][j]){
-                std::cout << "__";
-            } else if (!bottom_border_[i][j] && side_border_[i][j]){
-                std::cout << " |";
-            }  else {
-                std::cout << "  ";
-            }
-           
-            if(j == cols_ - 1)
-                std::cout << '\n';
-        }
-    }
-}
+
 std::mt19937 engine;
 bool Maze::CoinFlip() {
     using namespace std::chrono_literals;
@@ -130,9 +96,88 @@ bool Maze::CoinFlip() {
     return distribution(engine) % 2;
 }
 
-void Maze::Generate() {
+void Maze::SaveMaze(std::string path){
+    std::ofstream out;
+    out.open(path);
+    if (out.is_open()) {
+        out << rows_ << ' ' << cols_ << '\n';
+        for (int i = 0; i < rows_; ++i) {
+            for (int j = 0; j < cols_; ++j) {
+                out << side_border_[i][j];
+                j == cols_ - 1 ? out << '\n' : out << ' ';
+            }
+        }
+        out << '\n';
+        for (int i = 0; i < rows_; ++i) {
+            for (int j = 0; j < cols_; ++j) {
+                out << bottom_border_[i][j];
+                j == cols_ - 1 ? out << '\n' : out << ' ';
+            }
+        }
+        out.close();
+    }
+}
+
+void Maze::LoadMaze(std::string path) {
+    std::ifstream in(path);
+        if (in.is_open()) {
+            in >> rows_ >> cols_;
+            InitMaze(rows_, cols_);
+            bool tmp;
+            int i = 0, j = 0;
+            while(in >> tmp) {
+                 qDebug() << tmp << ' ';
+                side_border_[i][j++] = tmp;
+                if (j == cols_) {
+                    j = 0;
+                    ++i;
+                }
+                if (i == rows_)
+                    break;
+            }
+            i = 0, j = 0;
+            while(in >> tmp) {
+                bottom_border_[i][j++] = tmp;
+                if (j == cols_) {
+                    j = 0;
+                    ++i;
+
+                }
+                if (i == rows_)
+                    break;
+            }
+
+        }
+        in.close();
+}
+
+void Maze::Generate(int rows, int cols) {
+    InitMaze(rows, cols);
     for (int i = 0; i < rows_; ++i) {
         AddSideBorder(i);
         AddBottomBorder(i);
     }
+}
+
+void Maze::InitMaze(int rows, int cols) {
+    if (rows < 2 || cols < 2 || rows > 50 || cols > 50) {
+        rows = 2;
+        cols = 2;
+    }
+    cols_= cols;
+    rows_ = rows;
+    side_border_.clear();
+    bottom_border_.clear();
+    seed_.clear();
+    side_border_.resize(rows);
+    bottom_border_.resize(rows);
+    for (int i = 0; i < rows; ++i) {
+        side_border_[i].resize(cols);
+        bottom_border_[i].resize(cols);
+    }
+    seed_.resize(cols);
+    for (counter_ = 0; counter_ < cols; ++ counter_)
+        seed_[counter_] = counter_;
+    vert_length_ = (k_width ) / rows;
+    hor_length_ = (k_height ) / cols;
 }
